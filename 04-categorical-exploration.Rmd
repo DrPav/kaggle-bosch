@@ -1,0 +1,71 @@
+---
+title: "04-categorical-exploration"
+output: html_document
+---
+## Load the data
+```{r}
+library(data.table)
+library(dplyr)
+x = fread("data-sampled/train_categorical.csv", colClasses = rep("character", times = 2141)) %>% as.data.frame()
+x$Id <- NULL
+dim(x)
+head(colnames(x))
+tail(colnames(x))
+```
+
+```{r}
+# #Format the data into categorical
+# transformData <- function(x){
+#   #Take a column and put blanks into NA before converting to a factor
+#   x[x == ""] = NA
+#   return(factor(x))
+# }
+# x2 = apply(x, 2, transformData)
+for(col in colnames(x)){
+  f = x[,col] == ""
+  x[f, col] = NA
+  x[, col] = factor(x[,col])
+}
+
+```
+
+## Inspection of the columns 
+Take a few columns at random
+```{r}
+summary(x[,2])
+summary(x[, 100])
+summary(x[, 700])
+summary(x[, 960])
+```
+
+Lots of NAs
+
+## Make a plot showing the number of NAs
+```{r}
+pctNA <- function(x){
+  a = is.na(x)
+  b = sum(a)
+  c = length(x)
+  d = (b/c)*100
+  return(d)
+}
+percent_na = apply(x, 2, pctNA)
+plot(percent_na)
+```
+
+## What percentage of columns are totally NA
+```{r}
+length(percent_na[percent_na == 100])/length(percent_na)
+rm(percent_na)
+```
+
+
+## Plot the number of levels in each feature
+```{r}
+countLevels <- function(x){
+  y = length(levels(factor(x)))
+  return(y)
+}
+plot(apply(x, 2, countLevels))
+```
+

@@ -1,0 +1,139 @@
+---
+title: "02-date-exporation"
+output: html_document
+---
+## Load the data
+```{r}
+library(data.table)
+library(dplyr)
+x = fread("data-sampled/train_date.csv") %>% as.data.frame()
+response = fread("data-sampled/train_numeric.csv", select=c("Response"))$Response %>% factor()
+id = x$Id
+x$Id <- NULL
+dim(x)
+head(colnames(x))
+tail(colnames(x))
+```
+
+## Inspection of the columns reveals them to be numerical with many NA values
+Take a few columns at random
+```{r}
+summary(x[,2])
+summary(x[, 100])
+summary(x[, 700])
+summary(x[, 999])
+```
+
+## Make a plot showing the number of NAs
+```{r}
+pctNA <- function(x){
+  a = is.na(x)
+  b = sum(a)
+  c = length(x)
+  d = (b/c)*100
+  return(d)
+}
+percent_na = apply(x, 2, pctNA)
+plot(percent_na)
+```
+
+## Some interesting patterns
+```{r}
+column_names = colnames(x)
+head(column_names)
+```
+
+The Kaggle guidance gives the column description as
+aa_bb_dd
+aa = Production line
+bb = feature
+dd = day?
+
+## Production line
+```{r}
+splits = strsplit(column_names, "_", fixed = T)
+production_line = lapply(splits, function(x) x[[1]]) %>% as.character() %>%  factor()
+summary(production_line)
+plot(x = production_line, y = percent_na, xlab = "Production line", ylab = "Percent of NA values")
+```
+
+Production line L0 - L2 are sparse while L3 is not
+## Production line feature
+```{r}
+feature = lapply(splits, function(x) x[[2]]) %>% as.character() %>%  factor()
+summary(feature)
+table(feature, production_line)
+```
+
+Features are specific to a production line
+
+## Third part of string
+```{r}
+d = lapply(splits, function(x) x[[3]]) %>% as.character() %>%  factor()
+length(levels(d)) == length(column_names)
+```
+Just a column identifier
+
+## Can a Item go accross several production lines?
+```{r}
+productionLineIndicator <- function(x, line){
+  #Function to apply to each row
+  f = production_line == line
+  a = sum(!is.na(x[f]))
+  b = ifelse(a == 0, F, T)
+  return(b)
+}
+L0 = apply(x, 1, productionLineIndicator, line = "L0")
+L1 = apply(x, 1, productionLineIndicator, line = "L1")
+L2 = apply(x, 1, productionLineIndicator, line = "L2")
+L3 = apply(x, 1, productionLineIndicator, line = "L3")
+
+
+test = L0 + L1 + L2 + L3
+summary(test)
+hist(test, main = "Number of production lines for each ID")
+```
+
+Yes
+
+## Failure rate per production line
+```{r}
+response = as.character(response) %>% as.numeric()
+means = numeric()
+sds = numeric()
+for(line in levels(production_line)){
+  a = mean(response[get(line)])
+  b = sd(response[get(line)])
+  means = c(means, a)
+  sds = c(sds, b)
+}
+
+plot_data = data.frame(line = factor(levels(production_line)),
+                       mean_response = means,
+                       ymax = means + sds,
+                       ymin = means - sds)
+library(ggplot2)
+ggplot(plot_data, aes(x = line, y = mean_response)) +
+    geom_point(size = 3) 
+
+
+```
+
+## With error bars of +- 1sd
+```{r}
+ggplot(plot_data, aes(x = line, y = mean_response)) +
+    geom_point(size = 2) +
+    geom_errorbar(aes(ymin = ymin, ymax = ymax))
+```
+
+Possibly not significant
+
+
+## Date encoding
+Kaggle page says they are a timestamp
+```{r}
+all_dates = as.matrix(x) %>% as.vector()
+all_dates = all_dates[!is.na(all_dates)]
+hist(all_dates, breaks = 150)
+```
+

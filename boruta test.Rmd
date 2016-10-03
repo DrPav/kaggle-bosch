@@ -1,0 +1,29 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Boruta test on bosch data
+
+```{r}
+library(tidyverse)
+library(Boruta)
+library(data.table)
+```
+
+## Load the data
+
+```{r}
+n = fread("data-sampled/train_numeric.csv")
+
+target = n$Response
+features = n %>% select(-Response, -Id)
+features[is.na(features)] <- 99
+```
+
+
+## Run Boruta
+```{r}
+boruta_n = Boruta(features, target, doTrace = 2)
+```
+
